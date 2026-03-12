@@ -272,3 +272,14 @@ with col8:
         
 st.divider()
 st.caption("※ 새로고침(F5)을 누르면 실시간 데이터로 업데이트됩니다.")
+
+st.markdown("<br>", unsafe_allow_html=True) # 버튼 위쪽 여백 주기
+
+# 💡 버튼을 가운데로 예쁘게 정렬하기 위해 화면을 3등분 합니다.
+col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
+
+with col_btn2:
+    # ⚠️ 아래 "https://blog.naver.com/..." 부분을 실제 앤트리치 블로그 주소로 꼭 바꿔주세요!
+    st.link_button("🏠 앤트리치 블로그로 돌아가기 (오늘의 시장 분석 & 종목 보기) 👉", 
+                   "https://blog.naver.com/antrich10", 
+                   use_container_width=True)
