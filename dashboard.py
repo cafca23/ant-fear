@@ -9,6 +9,19 @@ warnings.filterwarnings("ignore", category=UserWarning, module='bs4')
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
 
 st.set_page_config(page_title="앤트리치 시황판", page_icon="📊", layout="wide")
+
+# ==========================================
+# 🚨 [신규 추가] 블로그 우회 접속 차단기 
+# ==========================================
+if st.query_params.get("from") != "blog":
+    st.error("🚨 비정상적인 접근입니다!")
+    st.write("이 **[앤트리치 3대 공포/탐욕 지수 현황판]**은 블로그 방문자 전용 프리미엄 기능입니다.")
+    st.write("아래 버튼을 눌러 블로그를 통해 정식으로 접속해 주세요! 🐜")
+    # 선생님의 앤트리치 블로그 주소 적용 완료!
+    st.link_button("👉 앤트리치 블로그로 이동하기", "https://blog.naver.com/antrich10")
+    st.stop() # 🛑 여기서 프로그램 작동을 완전히 멈춥니다! (아래 코드는 아예 안 돌아감)
+# ==========================================
+
 st.title("📊 앤트리치 3대 공포/탐욕 지수 현황판")
 st.write("투자의 나침반! 현재 시장의 분위기를 한눈에 파악하고 매매 타이밍을 잡으세요.")
 st.divider()
@@ -202,7 +215,8 @@ with col5:
         * **금리 급등 (발작)** : 주식 시장(특히 나스닥 성장주)의 목을 조르는 강력한 악재
         * **금리 안정/하락** : 주식 시장의 호재. 기업 이자 부담 감소 및 위험 자산 선호도 증가
         """)
-## ==========================================
+
+# ==========================================
 # [하단 2] 원자재 & 대체 자산 (인플레이션 및 유동성)
 # ==========================================
 st.header("🛢️ 원자재 & 대체 자산 (인플레이션 및 유동성)")
@@ -279,7 +293,6 @@ st.markdown("<br>", unsafe_allow_html=True) # 버튼 위쪽 여백 주기
 col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
 
 with col_btn2:
-    # ⚠️ 아래 "https://blog.naver.com/..." 부분을 실제 앤트리치 블로그 주소로 꼭 바꿔주세요!
     st.link_button("🏠 앤트리치 블로그로 돌아가기 (오늘의 시장 분석 & 종목 보기) 👉", 
                    "https://blog.naver.com/antrich10", 
                    use_container_width=True)
