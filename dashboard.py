@@ -11,15 +11,25 @@ headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/
 st.set_page_config(page_title="앤트리치 시황판", page_icon="📊", layout="wide")
 
 # ==========================================
-# 🚨 [신규 추가] 블로그 우회 접속 차단기 
+# 🚨 [업그레이드] 초고속 입장권 파쇄기 가동! (0.1초 컷)
 # ==========================================
-if st.query_params.get("from") != "blog":
+# 1. 앤트리치 방문증(세션) 발급 확인
+if "passed" not in st.session_state:
+    st.session_state.passed = False
+
+# 2. 주소창에 암호가 있으면 방문증에 '합격' 도장을 찍고, 암호를 0.1초 만에 파쇄합니다!
+if st.query_params.get("from") == "blog":
+    st.session_state.passed = True
+    st.query_params.clear()  # 💡 주소창에서 '?from=blog'를 즉시 삭제!
+    st.rerun()               # 💡 핵심 부스터: 화면을 그리기도 전에 강제 새로고침해서 흔적을 완벽히 날림!
+
+# 3. 방문증이 없는 불법 침입자 차단
+if not st.session_state.passed:
     st.error("🚨 비정상적인 접근입니다!")
     st.write("이 **[앤트리치 3대 공포/탐욕 지수 현황판]**은 블로그 방문자 전용 프리미엄 기능입니다.")
     st.write("아래 버튼을 눌러 블로그를 통해 정식으로 접속해 주세요! 🐜")
-    # 선생님의 앤트리치 블로그 주소 적용 완료!
     st.link_button("👉 앤트리치 블로그로 이동하기", "https://blog.naver.com/antrich10")
-    st.stop() # 🛑 여기서 프로그램 작동을 완전히 멈춥니다! (아래 코드는 아예 안 돌아감)
+    st.stop() # 🛑 여기서 프로그램 작동을 완전히 멈춥니다!
 # ==========================================
 
 st.title("📊 앤트리치 3대 공포/탐욕 지수 현황판")
@@ -31,13 +41,10 @@ st.divider()
 # ==========================================
 col1, col2, col3 = st.columns(3)
 
-# ==========================================
 # 1. 미국 VIX 지수 (왼쪽 칸)
-# ==========================================
 with col1:
     try:
         vix = yf.Ticker("^VIX")
-        # 💡 최근 5일치 데이터를 불러와서 변동 폭 계산
         vix_hist = vix.history(period="5d")['Close']
         vix_price = float(vix_hist.iloc[-1])
         vix_prev = float(vix_hist.iloc[-2])
@@ -55,7 +62,6 @@ with col1:
         else:
             vix_state = "🔴 극도의 공포 & 매수"
             
-        # 💡 공포지수가 오르면 악재이므로 색상을 반대로(inverse) 설정! (오르면 빨강, 내리면 초록)
         st.metric(label="🇺🇸 미국 VIX (공포 지수)", value=f"{vix_price:.2f}", 
                   delta=f"{vix_diff:.2f} ({vix_pct:.2f}%)", delta_color="inverse")
         st.markdown(f"**현재 상태: {vix_state}**")
@@ -72,9 +78,7 @@ with col1:
         * **40 이상 (극도의 공포 & 매수)** : 2008년 금융위기(80), 2020년 코로나(82) 수준의 패닉장
         """)
 
-# ==========================================
 # 2. 미국 CNN 공포/탐욕 지수 (가운데 칸)
-# ==========================================
 with col2:
     try:
         url_cnn = "https://production.dataviz.cnn.io/index/fearandgreed/graphdata"
@@ -82,7 +86,6 @@ with col2:
         data_cnn = res_cnn.json()
         
         score_cnn = float(data_cnn['fear_and_greed']['score'])
-        # 💡 CNN 서버에서 친절하게 '어제 종가(previous_close)'도 같이 줍니다!
         prev_cnn = float(data_cnn['fear_and_greed']['previous_close'])
         cnn_diff = score_cnn - prev_cnn
         
@@ -97,7 +100,6 @@ with col2:
         else:
             cnn_state = "🟢 극도의 탐욕 & 매도"
             
-        # 💡 CNN 지수는 숫자가 높을수록 주식시장이 좋은(탐욕) 상태이므로 정상(normal) 색상 적용
         st.metric(label="🦅 미국 CNN 지수", value=f"{score_cnn:.1f}", delta=f"{cnn_diff:.1f}")
         st.markdown(f"**현재 상태: {cnn_state}**")
         
@@ -113,9 +115,7 @@ with col2:
         * **75 ~ 100 (극도의 탐욕 & 매도)** : FOMO 절정 및 거품 붕괴 경고 (현금 확보 및 익절)
         """)
 
-# ==========================================
 # 3. 한국 KOSPI 공포 지수 (오른쪽 칸)
-# ==========================================
 with col3:
     try:
         url_vkospi = "https://kr.investing.com/indices/kospi-volatility"
@@ -129,7 +129,6 @@ with col3:
         vkospi_text = soup_vkospi.find(attrs={"data-test": "instrument-price-last"}).text
         vkospi_value = float(vkospi_text.replace(',', ''))
         
-        # 💡 인베스팅닷컴 화면에서 화살표 옆에 있는 변동 수치를 직접 긁어옵니다!
         try:
             vkospi_change = soup_vkospi.find(attrs={"data-test": "instrument-price-change"}).text
             vkospi_pct = soup_vkospi.find(attrs={"data-test": "instrument-price-change-percent"}).text
@@ -148,7 +147,6 @@ with col3:
         else:
             vkospi_state = "🔴 역사적 패닉 & 매수"
             
-        # 💡 V-KOSPI 역시 공포지수이므로 오르면 악재(빨강), 내리면 호재(초록)로 inverse 적용!
         st.metric(label="🐯 한국 V-KOSPI (인베스팅닷컴)", value=f"{vkospi_value:.2f}", 
                   delta=vkospi_delta_str, delta_color="inverse")
         st.markdown(f"**현재 상태: {vkospi_state}**")
@@ -177,12 +175,11 @@ col4, col5 = st.columns(2)
 with col4:
     try:
         usd_krw = yf.Ticker("KRW=X")
-        # 💡 최근 5일치 데이터를 불러와서 오늘과 어제 가격을 비교합니다!
         ex_hist = usd_krw.history(period="5d")['Close']
-        ex_price = float(ex_hist.iloc[-1]) # 오늘 환율
-        ex_prev = float(ex_hist.iloc[-2])  # 어제 환율
-        ex_diff = ex_price - ex_prev       # 변동 폭
-        ex_pct = (ex_diff / ex_prev) * 100 # 등락률(%)
+        ex_price = float(ex_hist.iloc[-1])
+        ex_prev = float(ex_hist.iloc[-2])
+        ex_diff = ex_price - ex_prev
+        ex_pct = (ex_diff / ex_prev) * 100
         
         st.metric(label="💵 달러/원 환율 (USD/KRW)", value=f"{ex_price:,.2f} 원", delta=f"{ex_diff:,.2f} 원 ({ex_pct:.2f}%)")
     except Exception as e:
@@ -198,14 +195,12 @@ with col4:
 with col5:
     try:
         tnx = yf.Ticker("^TNX")
-        # 💡 최근 5일치 데이터를 불러와서 오늘과 어제 금리를 비교합니다!
         tnx_hist = tnx.history(period="5d")['Close']
-        tnx_price = float(tnx_hist.iloc[-1]) # 오늘 금리
-        tnx_prev = float(tnx_hist.iloc[-2])  # 어제 금리
-        tnx_diff = tnx_price - tnx_prev      # 변동 폭 (%p)
-        tnx_pct = (tnx_diff / tnx_prev) * 100 # 등락률(%)
+        tnx_price = float(tnx_hist.iloc[-1])
+        tnx_prev = float(tnx_hist.iloc[-2])
+        tnx_diff = tnx_price - tnx_prev
+        tnx_pct = (tnx_diff / tnx_prev) * 100
         
-        # 금리는 차이값을 %p(퍼센트포인트)로 표기합니다.
         st.metric(label="🏛️ 미국 10년물 국채 금리", value=f"{tnx_price:.3f} %", delta=f"{tnx_diff:.3f} %p ({tnx_pct:.2f}%)")
     except Exception as e:
         st.metric(label="🏛️ 미국 10년물 국채 금리", value="불러오기 실패")
@@ -227,12 +222,11 @@ with col6:
     try:
         wti = yf.Ticker("CL=F")
         wti_hist = wti.history(period="5d")['Close']
-        wti_price = float(wti_hist.iloc[-1]) # 오늘 가격
-        wti_prev = float(wti_hist.iloc[-2])  # 어제 가격
-        wti_diff = wti_price - wti_prev      # 상승/하락 폭 계산
-        wti_pct = (wti_diff / wti_prev) * 100 # 퍼센트(%) 계산
+        wti_price = float(wti_hist.iloc[-1])
+        wti_prev = float(wti_hist.iloc[-2])
+        wti_diff = wti_price - wti_prev
+        wti_pct = (wti_diff / wti_prev) * 100
         
-        # 💡 delta 옵션을 추가하면 화살표가 예쁘게 생깁니다!
         st.metric(label="🛢️ WTI 국제 유가", value=f"$ {wti_price:.2f}", delta=f"{wti_diff:.2f} ({wti_pct:.2f}%)")
     except Exception as e:
         st.metric(label="🛢️ WTI 국제 유가", value="불러오기 실패")
