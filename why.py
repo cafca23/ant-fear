@@ -18,15 +18,28 @@ headers = {
 st.set_page_config(page_title="앤트리치 종목 이유 판독기", page_icon="🚨")
 
 # ==========================================
-# 🚨 [신규 추가] 블로그 우회 접속 차단기 가동!
+# 🚨 [업그레이드] 입장권 파쇄기 탑재! (주소창 숨김)
 # ==========================================
-if st.query_params.get("from") != "blog":
+# 1. 앤트리치 방문증(세션) 발급 확인
+if "passed" not in st.session_state:
+    st.session_state.passed = False
+
+# 2. 주소창에 암호가 있으면 방문증에 '합격' 도장을 찍고, 암호를 파쇄합니다!
+if st.query_params.get("from") == "blog":
+    st.session_state.passed = True
+    st.query_params.clear()  # 💡 마법의 코드: 주소창에서 '?from=blog'를 즉시 지워버립니다!
+
+# 3. 방문증이 없는 불법 침입자 차단
+if not st.session_state.passed:
     st.error("🚨 비정상적인 접근입니다!")
     st.write("이 **[앤트리치 종목 이유 판독기]**는 블로그 방문자 전용 프리미엄 기능입니다.")
     st.write("아래 버튼을 눌러 블로그를 통해 정식으로 접속해 주세요! 🐜")
     st.link_button("👉 앤트리치 블로그로 이동하기", "https://blog.naver.com/antrich10")
-    st.stop() # 🛑 여기서 프로그램 작동을 완전히 멈춥니다!
+    st.stop() # 🛑 여기서 프로그램 멈춤
 # ==========================================
+
+st.title("🚨 대체 이거 왜 올라/떨어져?!")
+# ... (이 아래는 기존 코드와 동일하게 쭉 진행됩니다!) ...
 
 st.title("🚨이 종목 왜 상승 / 하락 했지?")
 st.write("앤트리치가 방금 뜬 뉴스를 싹쓸이해서 급등락 이유를 딱 3줄로 요약해 드립니다.")
