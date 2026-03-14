@@ -3,7 +3,7 @@ import requests
 from bs4 import BeautifulSoup
 import google.generativeai as genai
 from google.api_core.exceptions import ResourceExhausted
-import yfinance as yf  # 💡 강력한 무기 추가!
+import yfinance as yf
 
 # ==========================================
 # 0. AI 세팅
@@ -40,37 +40,46 @@ st.write("영어 기사 번역기 돌리느라 지치셨죠? 앤트리치 AI가 
 st.divider()
 
 # ==========================================
-# 🧠 AI 두뇌 (yfinance 재무 데이터 + 구글 뉴스 결합)
+# 🧠 AI 두뇌 (재무 데이터 + 핵심 지표 + 뉴스 결합)
 # ==========================================
 @st.cache_data(ttl=3600, show_spinner=False)
 def get_earnings_summary(ticker):
     # ----------------------------------------
-    # [1단계] yfinance로 '정확한 숫자(매출, EPS)' 캐내기
+    # [1단계] yfinance로 '숫자' 캐내기 (PER, PBR, 순이익 추가!)
     # ----------------------------------------
     try:
         stock = yf.Ticker(ticker)
         
-        # 1. EPS 데이터 (예상치 vs 발표치)
+        # 1. EPS 및 매출 데이터
         eps_df = stock.earnings_dates
-        if eps_df is not None and not eps_df.empty:
-            eps_data = eps_df.head(3).to_string() # 최근 3분기 EPS 기록
-        else:
-            eps_data = "EPS 데이터를 불러올 수 없습니다."
-            
-        # 2. 최근 분기 재무제표 (매출 데이터)
+        eps_data = eps_df.head(3).to_string() if eps_df is not None and not eps_df.empty else "N/A"
+        
         inc_stmt = stock.quarterly_income_stmt
-        if inc_stmt is not None and not inc_stmt.empty:
-            # 상위 5개 항목(주로 Total Revenue 포함)의 최근 2분기 데이터 추출
-            rev_data = inc_stmt.iloc[:5, :2].to_string() 
-        else:
-            rev_data = "재무제표 데이터를 불러올 수 없습니다."
+        rev_data = inc_stmt.iloc[:5, :2].to_string() if inc_stmt is not None and not inc_stmt.empty else "N/A"
+        
+        # 💡 2. 대표적인 재무/가치평가 지표 (PER, PBR, PSR, 순이익) 추출
+        info = stock.info
+        per = info.get('trailingPE', 'N/A')
+        pbr = info.get('priceToBook', 'N/A')
+        psr = info.get('priceToSalesTrailing12Months', 'N/A')
+        
+        try:
+            # 최근 분기 순이익 (Net Income)
+            net_income_raw = inc_stmt.loc['Net Income'].iloc[0]
+            net_income = f"$ {net_income_raw:,.0f}" if isinstance(net_income_raw, (int, float)) else "N/A"
+        except:
+            net_income = "N/A"
             
-        financial_db = f"[yfinance 공식 재무 데이터]\n- EPS 히스토리 (Estimate가 예상치, Reported가 실제치):\n{eps_data}\n\n- 최근 분기 재무제표 (Total Revenue가 총매출):\n{rev_data}"
+        financial_db = f"""[yfinance 공식 재무 데이터]
+- EPS 히스토리:\n{eps_data}
+- 최근 분기 재무제표:\n{rev_data}
+- 핵심 지표: PER={per}, PBR={pbr}, PSR={psr}, 최근 분기 순이익={net_income}"""
+
     except Exception as e:
         financial_db = f"재무 데이터 수집 오류: {e}"
 
     # ----------------------------------------
-    # [2단계] 구글 뉴스로 '가이던스 및 시장 반응' 캐내기
+    # [2단계] 구글 뉴스로 '가이던스 및 반응' 캐내기
     # ----------------------------------------
     news_results = []
     try:
@@ -88,32 +97,40 @@ def get_earnings_summary(ticker):
     news_text = "\n\n".join(news_results) if news_results else "최근 뉴스를 찾을 수 없습니다."
 
     # ----------------------------------------
-    # [3단계] 제미나이에게 하드 트레이닝 프롬프트 지시
+    # [3단계] 제미나이 프롬프트 지시 (표 2개로 분리!)
     # ----------------------------------------
     prompt = f"""
     당신은 '앤트리치' 블로그의 수석 주식 분석가입니다.
-    아래 제공된 [{ticker}]의 두 가지 데이터를 바탕으로 한국인 투자자를 위한 실적 요약을 작성하세요.
+    아래 제공된 [{ticker}]의 데이터를 바탕으로 한국인 투자자를 위한 실적 요약을 작성하세요.
 
-    1. [실제 재무 데이터]: 여기서 'Total Revenue(매출)'와 'EPS' 숫자를 무조건 찾아서 표에 넣으세요!
+    1. [실제 재무 데이터]: 매출, EPS, 그리고 PER, PBR, PSR, 순이익 숫자를 찾아 표에 넣으세요.
     {financial_db}
     
-    2. [최신 뉴스 반응]: 여기서 '향후 가이던스'와 '종합 평가'를 분석하세요.
+    2. [최신 뉴스 반응]: 향후 가이던스와 종합 평가를 분석하세요.
     {news_text}
 
     [출력 양식 (반드시 아래 마크다운 표 형식을 유지할 것)]
-    ### 📊 [{ticker}] 최신 실적 요약 (AI 분석)
+    ### 📊 [{ticker}] 최신 실적 요약
     | 항목 | 발표 수치 및 결과 | 
     |---|---|
     | 💰 매출 (Revenue) | (예: 약 251억 달러 기록 / 지난 분기 대비 증가/감소) |
-    | 💵 주당순이익 (EPS) | (예: 0.71달러 기록 / 시장 예상치 0.74달러 하회 (어닝 미스)) |
+    | 💵 주당순이익 (EPS) | (예: 0.71달러 기록 / 시장 예상치 하회) |
+    | 🏦 최근 분기 순이익 | (데이터에 있는 Net Income 수치를 읽기 쉽게 원화나 달러 단위로 변환해서 기재) |
+
+    ### 🧮 핵심 가치평가(Valuation) 지표
+    | 지표 | 현재 수치 | 앤트리치 코멘트 |
+    |---|---|---|
+    | PER (주가수익비율) | (수치) | (이 수치를 바탕으로 고평가/저평가 여부나 동종업계 대비 느낌을 한 줄로 코멘트) |
+    | PBR (주가순자산비율)| (수치) | (가치 투자 관점에서의 한 줄 코멘트) |
+    | PSR (주가매출비율) | (수치) | (매출 대비 주가 수준 코멘트) |
 
     ### 🔮 향후 가이던스 (Guidance)
-    - (뉴스에서 파악된 다음 분기/연간 전망 1~2줄. 모르면 '뉴스를 통해 명확히 확인되지 않음' 기재)
+    - (뉴스에서 파악된 다음 분기/연간 전망 1~2줄. 모르면 '명확히 확인되지 않음' 기재)
 
     ### 🎯 앤트리치 3줄 요약 (종합 평가)
     1. (핵심 포인트 1)
     2. (핵심 포인트 2)
-    3. (주가 흐름 및 투자자 유의사항)
+    3. (주가 흐름 및 밸류에이션을 고려한 투자자 유의사항)
     """
     
     try:
