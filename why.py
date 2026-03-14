@@ -28,6 +28,7 @@ if "passed" not in st.session_state:
 if st.query_params.get("from") == "blog":
     st.session_state.passed = True
     st.query_params.clear()  # 💡 마법의 코드: 주소창에서 '?from=blog'를 즉시 지워버립니다!
+    st.rerun()               # 💡 핵심 부스터: 화면을 그리기도 전에 강제 새로고침해서 흔적을 완벽히 날림!
 
 # 3. 방문증이 없는 불법 침입자 차단
 if not st.session_state.passed:
