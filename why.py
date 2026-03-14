@@ -99,7 +99,7 @@ if st.button("이유 찾기 🚀", use_container_width=True):
     if not stock_name:
         st.warning("종목명을 먼저 입력해 주세요!")
     else:
-        with st.spinner(f"[{stock_name}] 최신 뉴스를 싹쓸이 분석 중입니다... 🕵️‍♂️ (캐시된 종목은 0.1초 만에 나옵니다!)"):
+        with st.spinner(f"[{stock_name}] 최신 뉴스를 싹쓸이 분석 중입니다..."):
             
             # 여기서 방금 만든 마법의 함수를 부릅니다!
             result_text = get_stock_reason(stock_name)
