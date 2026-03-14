@@ -45,7 +45,7 @@ if not st.session_state.passed:
 # ==========================================
 
 st.title("🚨 이 종목 왜 상승 / 하락 했지?")
-st.write("앤트리치가 네이버와 구글의 실시간 뉴스를 싹쓸이해서 급등락 이유를 딱 3줄로 요약해 드립니다.")
+st.write("앤트리치가 실시간 뉴스를 싹쓸이해서 급등락 이유를 딱 3줄로 요약해 드립니다.")
 
 # 💡 [신규 추가] 사용자 안내 문구 (파란색 예쁜 박스로 강조!)
 st.info("💡 참고: 최근 24시간 동안 특별한 뉴스가 없는 종목은 검색 결과가 안 나와요!")
@@ -134,12 +134,12 @@ if st.button("이유 찾기 🚀", use_container_width=True):
     if not stock_name:
         st.warning("종목명을 먼저 입력해 주세요!")
     else:
-        with st.spinner(f"네이버와 구글을 뒤져 [{stock_name}] 주가 변동의 진짜 이유를 분석 중입니다... 🕵️‍♂️"):
+        with st.spinner(f"앤트리치가 [{stock_name}] 주가 변동의 진짜 이유를 분석 중입니다... 🕵️‍♂️"):
             
             result_text = get_stock_reason(stock_name)
             
             if result_text == "ERROR_LIMIT":
-                st.error("🚨 앗! AI가 생각할 시간을 달래요. 딱 1분만 기다리셨다가 다시 버튼을 눌러주세요!")
+                st.error("🚨 앗! 생각할 시간을 주세요. 딱 1분만 기다리셨다가 다시 버튼을 눌러주세요!")
             elif result_text == "ERROR_NEWS":
                 st.error("🚨 뉴스 데이터를 불러오는 데 실패했습니다.")
             elif result_text == "NO_NEWS":
@@ -147,7 +147,7 @@ if st.button("이유 찾기 🚀", use_container_width=True):
             elif result_text == "ERROR_UNKNOWN":
                 st.error("🚨 알 수 없는 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.")
             else:
-                st.success(f"✅ [{stock_name}] 원인 분석 완료! (1시간 동안 캐시가 초고속으로 유지됩니다.)")
+                st.success(f"✅ [{stock_name}] 원인 분석 완료!")
                 with st.container(border=True):
                     st.markdown(f"### 🎯 [{stock_name}] 주가 변동 요인 3줄 요약")
                     st.markdown(result_text)
