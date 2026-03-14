@@ -46,6 +46,10 @@ if not st.session_state.passed:
 
 st.title("🚨 이 종목 왜 상승 / 하락 했지?")
 st.write("앤트리치가 네이버와 구글의 실시간 뉴스를 싹쓸이해서 급등락 이유를 딱 3줄로 요약해 드립니다.")
+
+# 💡 [신규 추가] 사용자 안내 문구 (파란색 예쁜 박스로 강조!)
+st.info("💡 참고: 최근 24시간 동안 특별한 뉴스가 없는 종목은 검색 결과가 안 나와요!")
+
 st.divider()
 
 # ==========================================
@@ -61,7 +65,6 @@ def get_stock_reason(stock_keyword):
     try:
         client_id = st.secrets["NAVER_CLIENT_ID"]
         client_secret = st.secrets["NAVER_CLIENT_SECRET"]
-        # 특징주, 주가, 급등, 급락 등의 키워드를 조합하여 더 정확하게 검색!
         query = urllib.parse.quote(f"{stock_keyword} 특징주 OR 주가 OR 급등 OR 급락")
         url_naver = f"https://openapi.naver.com/v1/search/news.json?query={query}&display=10&sort=sim"
         
