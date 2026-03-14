@@ -115,7 +115,9 @@ with col2:
         * **75 ~ 100 (극도의 탐욕 & 매도)** : FOMO 절정 및 거품 붕괴 경고 (현금 확보 및 익절)
         """)
 
+# ==========================================
 # 3. 한국 KOSPI 공포 지수 (오른쪽 칸)
+# ==========================================
 with col3:
     try:
         url_vkospi = "https://kr.investing.com/indices/kospi-volatility"
@@ -125,3 +127,40 @@ with col3:
         }
         res_vkospi = requests.get(url_vkospi, headers=inv_headers)
         soup_vkospi = BeautifulSoup(res_vkospi.text, "html.parser")
+        
+        vkospi_text = soup_vkospi.find(attrs={"data-test": "instrument-price-last"}).text
+        vkospi_value = float(vkospi_text.replace(',', ''))
+        
+        try:
+            vkospi_change = soup_vkospi.find(attrs={"data-test": "instrument-price-change"}).text
+            vkospi_pct = soup_vkospi.find(attrs={"data-test": "instrument-price-change-percent"}).text
+            vkospi_delta_str = f"{vkospi_change} {vkospi_pct}"
+        except:
+            vkospi_delta_str = None
+        
+        if vkospi_value < 15:
+            vkospi_state = "🟢 극도의 탐욕 & 매도"
+        elif vkospi_value < 20:
+            vkospi_state = "🟡 안정 & 매도"
+        elif vkospi_value < 30:
+            vkospi_state = "⚪ 경계 & 중립"
+        elif vkospi_value < 40:
+            vkospi_state = "🟠 극도의 공포 & 매수"
+        else:
+            vkospi_state = "🔴 역사적 패닉 & 매수"
+            
+        st.metric(label="🐯 한국 V-KOSPI (인베스팅닷컴)", value=f"{vkospi_value:.2f}", 
+                  delta=vkospi_delta_str, delta_color="inverse")
+        st.markdown(f"**현재 상태: {vkospi_state}**")
+        
+    except Exception as e:
+        st.metric(label="🐯 한국 V-KOSPI", value="불러오기 실패")
+
+    with st.expander("📌 V-KOSPI 해석 가이드"):
+        st.markdown("""
+        * **15 미만 (극도의 탐욕 & 매도)** : 폭풍 전야. 기습 조정에 대비해 신규 매수 자제
+        * **15 ~ 20 (안정 & 매도)** : 이상적인 강세장. 추세를 타며 기존 수익 극대화
+        * **20 ~ 30 (경계 & 중립)** : 악재로 인한 변동성 확대. 리스크 관리 및 줍줍 후보 탐색
+        * **30 ~ 40 (극도의 공포 & 매수)** : 시스템 위기감에 따른 투매 발생. 바닥 분할 매수 시작
+        * **40 이상 (역사적 패닉 & 매수)** : 금융위기, 팬데믹급 패닉. 일생일대의 바닥 매수 찬스
+        """)
