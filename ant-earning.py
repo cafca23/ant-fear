@@ -3,9 +3,7 @@ import requests
 from bs4 import BeautifulSoup
 import google.generativeai as genai
 from google.api_core.exceptions import ResourceExhausted
-import warnings
-
-warnings.filterwarnings("ignore", category=UserWarning, module='bs4')
+import yfinance as yf  # 💡 강력한 무기 추가!
 
 # ==========================================
 # 0. AI 세팅
@@ -38,62 +36,84 @@ if not st.session_state.passed:
 # ==========================================
 
 st.title("🇺🇸 영어 1도 몰라도 OK! 미주 실적 요약기")
-st.write("영어 기사 번역기 돌리느라 지치셨죠? 앤트리치 AI가 월가의 영문 실적 기사를 방금 읽고, 가장 중요한 핵심만 한글 표로 정리해 드립니다.")
+st.write("영어 기사 번역기 돌리느라 지치셨죠? 앤트리치 AI가 실제 재무 데이터와 월가 뉴스를 종합해 핵심만 한글 표로 정리해 드립니다.")
 st.divider()
 
 # ==========================================
-# 🧠 AI 두뇌 (실적 기사 심층 스캔)
+# 🧠 AI 두뇌 (yfinance 재무 데이터 + 구글 뉴스 결합)
 # ==========================================
 @st.cache_data(ttl=3600, show_spinner=False)
 def get_earnings_summary(ticker):
+    # ----------------------------------------
+    # [1단계] yfinance로 '정확한 숫자(매출, EPS)' 캐내기
+    # ----------------------------------------
+    try:
+        stock = yf.Ticker(ticker)
+        
+        # 1. EPS 데이터 (예상치 vs 발표치)
+        eps_df = stock.earnings_dates
+        if eps_df is not None and not eps_df.empty:
+            eps_data = eps_df.head(3).to_string() # 최근 3분기 EPS 기록
+        else:
+            eps_data = "EPS 데이터를 불러올 수 없습니다."
+            
+        # 2. 최근 분기 재무제표 (매출 데이터)
+        inc_stmt = stock.quarterly_income_stmt
+        if inc_stmt is not None and not inc_stmt.empty:
+            # 상위 5개 항목(주로 Total Revenue 포함)의 최근 2분기 데이터 추출
+            rev_data = inc_stmt.iloc[:5, :2].to_string() 
+        else:
+            rev_data = "재무제표 데이터를 불러올 수 없습니다."
+            
+        financial_db = f"[yfinance 공식 재무 데이터]\n- EPS 히스토리 (Estimate가 예상치, Reported가 실제치):\n{eps_data}\n\n- 최근 분기 재무제표 (Total Revenue가 총매출):\n{rev_data}"
+    except Exception as e:
+        financial_db = f"재무 데이터 수집 오류: {e}"
+
+    # ----------------------------------------
+    # [2단계] 구글 뉴스로 '가이던스 및 시장 반응' 캐내기
+    # ----------------------------------------
     news_results = []
     try:
-        # 💡 개선점 1: when:7d 삭제. EPS, Revenue 등의 핵심 키워드 추가!
-        url = f"https://news.google.com/rss/search?q={ticker}+latest+quarter+earnings+EPS+revenue+beat+miss&hl=en-US&gl=US&ceid=US:en"
+        url = f"https://news.google.com/rss/search?q={ticker}+latest+quarter+earnings+guidance&hl=en-US&gl=US&ceid=US:en"
         res = requests.get(url, headers=headers)
         soup = BeautifulSoup(res.text, "html.parser")
         
-        # 💡 개선점 2: 상위 10개 기사의 '제목' + '기사 본문 요약(숫자 포함)'까지 싹쓸이!
         for news in soup.find_all("item")[:10]:
             title = news.title.text if news.title else ""
-            desc_html = news.description.text if news.description else ""
-            # HTML 찌꺼기 제거하고 깔끔한 텍스트만 추출
-            desc_text = BeautifulSoup(desc_html, "html.parser").get_text(separator=" ", strip=True)
-            news_results.append(f"[제목]: {title}\n[요약]: {desc_text}")
+            desc = BeautifulSoup(news.description.text, "html.parser").get_text(separator=" ", strip=True) if news.description else ""
+            news_results.append(f"[뉴스 제목]: {title}\n[내용 요약]: {desc}")
     except:
-        return "ERROR_NEWS"
+        pass
         
-    if not news_results:
-        return "NO_NEWS"
-        
-    news_text = "\n\n".join(news_results)
-    
-    # 💡 개선점 3: 프롬프트를 더 강력하게 압박! (무조건 숫자를 찾아내라고 지시)
+    news_text = "\n\n".join(news_results) if news_results else "최근 뉴스를 찾을 수 없습니다."
+
+    # ----------------------------------------
+    # [3단계] 제미나이에게 하드 트레이닝 프롬프트 지시
+    # ----------------------------------------
     prompt = f"""
-    You are an expert Wall Street financial analyst writing for a Korean audience ('Antrich' blog).
-    Here are the news headlines and snippets for the latest earnings report of [{ticker}].
+    당신은 '앤트리치' 블로그의 수석 주식 분석가입니다.
+    아래 제공된 [{ticker}]의 두 가지 데이터를 바탕으로 한국인 투자자를 위한 실적 요약을 작성하세요.
+
+    1. [실제 재무 데이터]: 여기서 'Total Revenue(매출)'와 'EPS' 숫자를 무조건 찾아서 표에 넣으세요!
+    {financial_db}
     
+    2. [최신 뉴스 반응]: 여기서 '향후 가이던스'와 '종합 평가'를 분석하세요.
     {news_text}
 
-    Carefully extract the exact numbers for Revenue and EPS from the text above. 
-    Based on this information, provide a clear, concise earnings summary entirely in KOREAN.
-    You MUST format the output exactly like this structure:
-
+    [출력 양식 (반드시 아래 마크다운 표 형식을 유지할 것)]
     ### 📊 [{ticker}] 최신 실적 요약 (AI 분석)
-    | 항목 | 발표 수치 및 시장 예상치 비교 | 
+    | 항목 | 발표 수치 및 결과 | 
     |---|---|
-    | 💰 매출 (Revenue) | (예: 251억 달러 기록 / 예상치 256억 달러 하회) |
-    | 💵 주당순이익 (EPS) | (예: 0.71달러 기록 / 예상치 0.74달러 하회) |
+    | 💰 매출 (Revenue) | (예: 약 251억 달러 기록 / 지난 분기 대비 증가/감소) |
+    | 💵 주당순이익 (EPS) | (예: 0.71달러 기록 / 시장 예상치 0.74달러 하회 (어닝 미스)) |
 
     ### 🔮 향후 가이던스 (Guidance)
-    - (회사에서 발표한 다음 분기나 연간 전망을 1~2줄로 요약. 기사에 없으면 '언급되지 않음'으로 처리)
+    - (뉴스에서 파악된 다음 분기/연간 전망 1~2줄. 모르면 '뉴스를 통해 명확히 확인되지 않음' 기재)
 
     ### 🎯 앤트리치 3줄 요약 (종합 평가)
     1. (핵심 포인트 1)
     2. (핵심 포인트 2)
-    3. (시장의 반응이나 주가 향방에 대한 짧은 코멘트)
-
-    명심하세요: 숫자가 포함된 팩트를 최우선으로 찾아서 표에 넣으세요!
+    3. (주가 흐름 및 투자자 유의사항)
     """
     
     try:
@@ -118,20 +138,16 @@ if st.button("실적 요약 🚀", use_container_width=True):
     else:
         target_ticker = ticker_input.upper().strip() 
         
-        with st.spinner(f"월가에서 [{target_ticker}] 영문 실적 발표 자료를 가져와 번역/분석 중입니다... 🕵️‍♂️ (약 5~10초 소요)"):
+        with st.spinner(f"월가에서 [{target_ticker}]의 실제 재무제표와 뉴스를 분석 중입니다... 🕵️‍♂️ (약 5~10초)"):
             
             result_text = get_earnings_summary(target_ticker)
             
             if result_text == "ERROR_LIMIT":
                 st.error("🚨 앗! AI가 생각할 시간을 달래요. 딱 1분만 기다리셨다가 다시 버튼을 눌러주세요!")
-            elif result_text == "ERROR_NEWS":
-                st.error("🚨 뉴스 데이터를 불러오는 데 실패했습니다.")
-            elif result_text == "NO_NEWS":
-                st.info(f"앗! [{target_ticker}]의 실적 발표 뉴스를 찾을 수 없습니다. 티커가 틀렸는지 확인해 주세요!")
             elif result_text == "ERROR_UNKNOWN":
                 st.error("🚨 알 수 없는 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.")
             else:
-                st.success(f"✅ [{target_ticker}] 실적 분석 완료! (1시간 동안 캐시가 유지되어 엄청 빠르게 뜹니다.)")
+                st.success(f"✅ [{target_ticker}] 실적 분석 완료! (1시간 동안 캐시가 유지되어 빠르게 뜹니다.)")
                 with st.container(border=True):
                     st.markdown(result_text)
 
