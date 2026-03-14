@@ -37,10 +37,6 @@ if not st.session_state.passed:
     st.link_button("👉 앤트리치 블로그로 이동하기", "https://blog.naver.com/antrich10")
     st.stop() # 🛑 여기서 프로그램 멈춤
 # ==========================================
-
-st.title("🚨 대체 이거 왜 올라/떨어져?!")
-# ... (이 아래는 기존 코드와 동일하게 쭉 진행됩니다!) ...
-
 st.title("🚨이 종목 왜 상승 / 하락 했지?")
 st.write("앤트리치가 방금 뜬 뉴스를 싹쓸이해서 급등락 이유를 딱 3줄로 요약해 드립니다.")
 st.divider()
