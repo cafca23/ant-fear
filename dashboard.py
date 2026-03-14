@@ -11,17 +11,16 @@ headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/
 st.set_page_config(page_title="앤트리치 시황판", page_icon="📊", layout="wide")
 
 # ==========================================
-# 🚨 [업그레이드] 초고속 입장권 파쇄기 가동! (0.1초 컷)
+# 🚨 [최종 진화] 암살자 모드 파쇄기 가동! (화면 깜빡임 없이 조용히 지우기)
 # ==========================================
 # 1. 앤트리치 방문증(세션) 발급 확인
 if "passed" not in st.session_state:
     st.session_state.passed = False
 
-# 2. 주소창에 암호가 있으면 방문증에 '합격' 도장을 찍고, 암호를 0.1초 만에 파쇄합니다!
+# 2. 주소창에 암호가 있으면 방문증에 '합격' 도장을 찍고, 암호를 조용히 지웁니다.
 if st.query_params.get("from") == "blog":
     st.session_state.passed = True
-    st.query_params.clear()  # 💡 주소창에서 '?from=blog'를 즉시 삭제!
-    st.rerun()               # 💡 핵심 부스터: 화면을 그리기도 전에 강제 새로고침해서 흔적을 완벽히 날림!
+    st.query_params.clear()  # 💡 암호 지우기 끝! (여기에 있던 st.rerun()을 삭제해서 딜레이를 없앴습니다)
 
 # 3. 방문증이 없는 불법 침입자 차단
 if not st.session_state.passed:
