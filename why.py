@@ -158,3 +158,21 @@ if st.button("이유 찾기 🚀", use_container_width=True):
 st.divider()
 st.caption("더 깊이 있는 종목 분석과 매매 타점이 궁금하다면?")
 st.link_button("👉 앤트리치 블로그 바로가기", "https://blog.naver.com/antrich10", use_container_width=True)
+
+# ==========================================
+# 3. 블로그 트래픽 유도용 하단 버튼 & 면책 조항
+# ==========================================
+st.divider()
+st.caption("테마주 단타 치기 전에 필수 확인! 앤트리치의 시장 분석을 먼저 읽어보세요.")
+st.link_button("👉 앤트리치 블로그 바로가기", "https://blog.naver.com/antrich10", use_container_width=True)
+
+st.markdown("<br>", unsafe_allow_html=True) # 약간의 여백 띄우기
+
+# 💡 [신규 업데이트] 굵은 빨간색 면책 조항 적용!
+st.markdown("""
+<div style="color: red; font-weight: bold; font-size: 13px; text-align: center;">
+[투자 유의사항]<br>
+본 게시물은 정보 제공을 목적으로 작성되었으며, 특정 종목의 매수/매도 추천이 아닙니다.<br>
+투자에 대한 모든 판단과 책임은 투자자 본인에게 있음을 알려드립니다.
+</div>
+""", unsafe_allow_html=True)
