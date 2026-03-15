@@ -38,8 +38,8 @@ if not st.session_state.passed:
     st.stop()
 # ==========================================
 
-st.title("🎯 그래서 관련주가 뭔데?! (ant-what 족집게)")
-st.write("광고성 블로그 글 뒤지지 마세요! AI가 네이버와 구글의 실시간 뉴스를 싹쓸이 분석해 '진짜 수혜주'만 3초 만에 쏙쏙 골라드립니다.")
+st.title("🎯 주식 관련주/수혜주 찾기")
+st.write("앤트리치가 실시간 뉴스를 싹쓸이 분석해 '진짜 수혜주'만 3초 만에 쏙쏙 골라드립니다.")
 st.divider()
 
 # ==========================================
@@ -55,7 +55,6 @@ def get_theme_stocks(theme):
     try:
         client_id = st.secrets["NAVER_CLIENT_ID"]
         client_secret = st.secrets["NAVER_CLIENT_SECRET"]
-        # 검색어 세팅: 테마 이름 + 특징주/대장주
         query = urllib.parse.quote(f"{theme} 특징주 OR 대장주 OR 수혜주")
         url = f"https://openapi.naver.com/v1/search/news.json?query={query}&display=10&sort=sim"
         
@@ -67,11 +66,10 @@ def get_theme_stocks(theme):
         if response.getcode() == 200:
             data = json.loads(response.read().decode('utf-8'))
             for item in data['items']:
-                # 네이버 API는 제목에 HTML 태그(<b>)를 섞어서 주므로 깔끔하게 제거
                 clean_title = BeautifulSoup(item['title'], 'html.parser').text
                 news_results.append(f"[네이버 뉴스] {clean_title}")
     except Exception as e:
-        pass # 네이버 에러 나면 조용히 패스하고 구글로 넘어감
+        pass 
 
     # ----------------------------------------
     # 엔진 2: 구글 뉴스 RSS (글로벌 트렌드 및 거시적 시각 포착)
@@ -86,7 +84,6 @@ def get_theme_stocks(theme):
     except Exception as e:
         pass
 
-    # 두 엔진에서 긁어온 뉴스 합치기
     news_text = "\n".join(news_results) if news_results else "최근 뚜렷한 특징주 뉴스가 없습니다. 일반적인 시장 지식을 활용해 답변하세요."
 
     # ----------------------------------------
@@ -107,11 +104,11 @@ def get_theme_stocks(theme):
     3. 아래 마크다운 양식을 정확히 지켜서 출력하세요.
 
     ### 🥇 [{theme}] 대장주 (Top Pick)
-    - **[종목명]**: (이 종목이 대장주인 팩트 1줄 이유)
+    - **[종목명]** : (이 종목이 대장주인 팩트 1줄 이유)
 
     ### 🥈 [{theme}] 관련주 / 2등주
-    1. **[종목명]**: (수혜주로 꼽히는 팩트 1줄 이유)
-    2. **[종목명]**: (수혜주로 꼽히는 팩트 1줄 이유)
+    1. **[종목명]** : (수혜주로 꼽히는 팩트 1줄 이유)
+    2. **[종목명]** : (수혜주로 꼽히는 팩트 1줄 이유)
 
     ### 💡 앤트리치 코멘트 (투자 유의사항)
     - (이 테마에 투자할 때 주의할 점이나 재료의 지속성에 대한 분석가 코멘트 1~2줄)
@@ -151,8 +148,16 @@ if st.button("대장주 찾기 🚀", use_container_width=True):
                     st.markdown(result_text)
 
 # ==========================================
-# 3. 블로그 트래픽 유도용 하단 버튼
+# 3. 블로그 트래픽 유도용 하단 버튼 & 면책 조항
 # ==========================================
 st.divider()
 st.caption("테마주 단타 치기 전에 필수 확인! 앤트리치의 시장 분석을 먼저 읽어보세요.")
 st.link_button("👉 앤트리치 블로그 바로가기", "https://blog.naver.com/antrich10", use_container_width=True)
+
+st.markdown("<br>", unsafe_allow_html=True) # 약간의 여백 띄우기
+
+# 💡 [신규 추가] 면책 조항 (경고 메시지)
+st.caption("""
+**[투자 유의사항]** 본 게시물은 정보 제공을 목적으로 작성되었으며, 특정 종목의 매수/매도 추천이 아닙니다.  
+투자에 대한 모든 판단과 책임은 투자자 본인에게 있음을 알려드립니다.
+""")
