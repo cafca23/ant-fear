@@ -143,7 +143,7 @@ if st.button("이유 찾기 🚀", use_container_width=True):
             elif result_text == "ERROR_NEWS":
                 st.error("🚨 뉴스 데이터를 불러오는 데 실패했습니다.")
             elif result_text == "NO_NEWS":
-                st.info(f"앗! 최근 24시간 동안 [{stock_name}]에 대한 특별한 뉴스가 없습니다. 잔잔한 하루인가 보네요!")
+                st.info(f"앗! 최근 24시간 동안 [{stock_name}]에 대한 특별한 뉴스가 없습니다. 아직 관련 뉴스가 없습니다.")
             elif result_text == "ERROR_UNKNOWN":
                 st.error("🚨 알 수 없는 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.")
             else:
