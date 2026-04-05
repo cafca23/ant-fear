@@ -20,7 +20,7 @@ if "passed" not in st.session_state:
 # 2. 주소창에 암호가 있으면 방문증에 '합격' 도장을 찍고, 암호를 조용히 지웁니다.
 if st.query_params.get("from") == "blog":
     st.session_state.passed = True
-    st.query_params.clear()  # 💡 암호 지우기 끝! (여기에 있던 st.rerun()을 삭제해서 딜레이를 없앴습니다)
+    st.query_params.clear()  
 
 # 3. 방문증이 없는 불법 침입자 차단
 if not st.session_state.passed:
@@ -28,7 +28,7 @@ if not st.session_state.passed:
     st.write("이 **[앤트리치 3대 공포/탐욕 지수 현황판]**은 블로그 방문자 전용 프리미엄 기능입니다.")
     st.write("아래 버튼을 눌러 블로그를 통해 정식으로 접속해 주세요! 🐜")
     st.link_button("👉 앤트리치 블로그로 이동하기", "https://blog.naver.com/antrich10")
-    st.stop() # 🛑 여기서 프로그램 작동을 완전히 멈춥니다!
+    st.stop() 
 # ==========================================
 
 st.title("📊 앤트리치 3대 공포/탐욕 지수 현황판")
@@ -117,23 +117,22 @@ with col2:
 # 3. 한국 KOSPI 공포 지수 (오른쪽 칸)
 with col3:
     try:
-        url_vkospi = "https://kr.investing.com/indices/kospi-volatility"
-        inv_headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-            'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7'
-        }
-        res_vkospi = requests.get(url_vkospi, headers=inv_headers)
-        soup_vkospi = BeautifulSoup(res_vkospi.text, "html.parser")
+        # 💡 [핵심 패치] 인베스팅닷컴 차단 우회 -> 네이버 금융 실시간 폴링 API 다이렉트 꽂기
+        url_vkospi = "https://polling.finance.naver.com/api/realtime/domestic/index/VKOSPI"
+        res_vkospi = requests.get(url_vkospi, headers=headers)
+        data_vkospi = res_vkospi.json()
         
-        vkospi_text = soup_vkospi.find(attrs={"data-test": "instrument-price-last"}).text
-        vkospi_value = float(vkospi_text.replace(',', ''))
+        item = data_vkospi['result']['datas'][0]
+        vkospi_value = float(item['closePrice'].replace(',', ''))
+        vkospi_diff = float(item['compareToPreviousClosePrice'].replace(',', ''))
+        vkospi_pct = float(item['fluctuationsRatio'].replace(',', ''))
         
-        try:
-            vkospi_change = soup_vkospi.find(attrs={"data-test": "instrument-price-change"}).text
-            vkospi_pct = soup_vkospi.find(attrs={"data-test": "instrument-price-change-percent"}).text
-            vkospi_delta_str = f"{vkospi_change} {vkospi_pct}"
-        except:
-            vkospi_delta_str = None
+        # 하락일 경우 부호 음수 처리
+        if item.get('fluctuationsType', {}).get('text') == '하락':
+            vkospi_diff = -abs(vkospi_diff)
+            vkospi_pct = -abs(vkospi_pct)
+            
+        vkospi_delta_str = f"{vkospi_diff:.2f} ({vkospi_pct:.2f}%)"
         
         if vkospi_value < 15:
             vkospi_state = "🟢 극도의 탐욕 & 매도"
@@ -146,7 +145,7 @@ with col3:
         else:
             vkospi_state = "🔴 역사적 패닉 & 매수"
             
-        st.metric(label="🐯 한국 V-KOSPI (인베스팅닷컴)", value=f"{vkospi_value:.2f}", 
+        st.metric(label="🐯 한국 V-KOSPI (네이버 금융)", value=f"{vkospi_value:.2f}", 
                   delta=vkospi_delta_str, delta_color="inverse")
         st.markdown(f"**현재 상태: {vkospi_state}**")
         
@@ -280,9 +279,8 @@ with col8:
 st.divider()
 st.caption("※ 새로고침(F5)을 누르면 실시간 데이터로 업데이트됩니다.")
 
-st.markdown("<br>", unsafe_allow_html=True) # 버튼 위쪽 여백 주기
+st.markdown("<br>", unsafe_allow_html=True) 
 
-# 💡 버튼을 가운데로 예쁘게 정렬하기 위해 화면을 3등분 합니다.
 col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
 
 with col_btn2:
