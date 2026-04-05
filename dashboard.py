@@ -3,10 +3,10 @@ import requests
 from bs4 import BeautifulSoup
 import yfinance as yf
 import warnings
+import pandas as pd
 
 warnings.filterwarnings("ignore", category=UserWarning, module='bs4')
 
-# 💡 [보안 우회] 모바일 앱인 척 위장하는 강력한 헤더
 headers = {
     'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15',
     'Referer': 'https://m.stock.naver.com/'
@@ -15,7 +15,7 @@ headers = {
 st.set_page_config(page_title="앤트리치 시황판", page_icon="📊", layout="wide")
 
 # ==========================================
-# 🚨 [최종 진화] 암살자 모드 파쇄기 가동! (화면 깜빡임 없이 조용히 지우기)
+# 🚨 암살자 모드 파쇄기 가동! (화면 깜빡임 없이 조용히 지우기)
 # ==========================================
 if "passed" not in st.session_state:
     st.session_state.passed = False
@@ -37,7 +37,7 @@ st.write("투자의 나침반! 현재 시장의 분위기를 한눈에 파악하
 st.divider()
 
 # ==========================================
-# [상단] 3대 심리 지표 (VIX, CNN, V-KOSPI)
+# [상단] 3대 심리 지표 (VIX, CNN, KOSPI 이격도)
 # ==========================================
 col1, col2, col3 = st.columns(3)
 
@@ -117,60 +117,48 @@ with col2:
         * **75 ~ 100 (극도의 탐욕 & 매도)** : FOMO 절정 및 거품 붕괴 경고 (현금 확보 및 익절)
         """)
 
-# 3. 한국 KOSPI 공포 지수 (오른쪽 칸)
+# 3. 한국 KOSPI 이격도 심리 지수 (오른쪽 칸)
 with col3:
     try:
-        # 💡 [이중 우회 1순위] 야후 파이낸스 공식 티커 (서버 차단 없음)
-        try:
-            vkospi = yf.Ticker("^VKOSPI")
-            vk_hist = vkospi.history(period="5d")['Close']
-            vkospi_value = float(vk_hist.iloc[-1])
-            vkospi_prev = float(vk_hist.iloc[-2])
-            vkospi_diff = vkospi_value - vkospi_prev
-            vkospi_pct = (vkospi_diff / vkospi_prev) * 100
-        except:
-            # 💡 [이중 우회 2순위] 네이버 모바일 API (PC버전보다 보안이 낮아 뚫림)
-            url_vkospi = "https://m.stock.naver.com/api/index/VKOSPI/basic"
-            res_vkospi = requests.get(url_vkospi, headers=headers)
-            data_vkospi = res_vkospi.json()
-            
-            vkospi_value = float(str(data_vkospi.get('closePrice', '0')).replace(',', ''))
-            diff_raw = data_vkospi.get('compareToPreviousPrice', data_vkospi.get('compareToPreviousClosePrice', '0'))
-            vkospi_diff = float(str(diff_raw).replace(',', ''))
-            vkospi_pct = float(str(data_vkospi.get('fluctuationsRatio', '0')).replace(',', ''))
-            
-            if data_vkospi.get('fluctuationsType', {}).get('text') == '하락' or str(data_vkospi.get('fluctuationsRatio', '')).startswith('-'):
-                vkospi_diff = -abs(vkospi_diff)
-                vkospi_pct = -abs(vkospi_pct)
-                
-        sign = "+" if vkospi_diff > 0 else ""
-        vkospi_delta_str = f"{sign}{vkospi_diff:.2f} ({sign}{vkospi_pct:.2f}%)"
+        # 💡 [핵심 패치] V-KOSPI 대신 100% 안정적인 KOSPI 종합지수를 이용한 이격도(심리) 계산
+        kospi = yf.Ticker("^KS11")
+        ks_hist = kospi.history(period="1mo")['Close']
         
-        if vkospi_value < 15:
-            vkospi_state = "🟢 극도의 탐욕 & 매도"
-        elif vkospi_value < 20:
-            vkospi_state = "🟡 안정 & 매도"
-        elif vkospi_value < 30:
-            vkospi_state = "⚪ 경계 & 중립"
-        elif vkospi_value < 40:
-            vkospi_state = "🟠 극도의 공포 & 매수"
+        kospi_value = float(ks_hist.iloc[-1])
+        kospi_prev = float(ks_hist.iloc[-2])
+        kospi_diff = kospi_value - kospi_prev
+        kospi_pct = (kospi_diff / kospi_prev) * 100
+        
+        # 20일 이동평균선(MA20) 대비 현재 주가의 이격도(괴리율) 계산
+        ma20 = ks_hist.tail(20).mean()
+        disparity = (kospi_value / ma20) * 100
+        
+        if disparity >= 105:
+            ks_state = "🟢 극도의 탐욕 (단기 과열)"
+        elif disparity >= 102:
+            ks_state = "🟡 탐욕 & 안정 (강세장)"
+        elif disparity >= 98:
+            ks_state = "⚪ 중립 & 관망 (보합세)"
+        elif disparity >= 95:
+            ks_state = "🟠 공포 & 줍줍 (단기 침체)"
         else:
-            vkospi_state = "🔴 역사적 패닉 & 매수"
+            ks_state = "🔴 극도의 공포 (투매/바닥)"
             
-        st.metric(label="🐯 한국 V-KOSPI (공포 지수)", value=f"{vkospi_value:.2f}", 
-                  delta=vkospi_delta_str, delta_color="inverse")
-        st.markdown(f"**현재 상태: {vkospi_state}**")
+        sign = "+" if kospi_diff > 0 else ""
+        st.metric(label="🐯 한국 KOSPI (단기 과열/침체 지수)", value=f"{kospi_value:,.2f}", 
+                  delta=f"{sign}{kospi_diff:.2f} ({sign}{kospi_pct:.2f}%)")
+        st.markdown(f"**시장 심리: {ks_state}**")
         
     except Exception as e:
-        st.metric(label="🐯 한국 V-KOSPI", value="불러오기 실패")
+        st.metric(label="🐯 한국 KOSPI 심리 지수", value="불러오기 실패")
 
-    with st.expander("📌 V-KOSPI 해석 가이드"):
+    with st.expander("📌 KOSPI 이격도(심리) 가이드"):
         st.markdown("""
-        * **15 미만 (극도의 탐욕 & 매도)** : 폭풍 전야. 기습 조정에 대비해 신규 매수 자제
-        * **15 ~ 20 (안정 & 매도)** : 이상적인 강세장. 추세를 타며 기존 수익 극대화
-        * **20 ~ 30 (경계 & 중립)** : 악재로 인한 변동성 확대. 리스크 관리 및 줍줍 후보 탐색
-        * **30 ~ 40 (극도의 공포 & 매수)** : 시스템 위기감에 따른 투매 발생. 바닥 분할 매수 시작
-        * **40 이상 (역사적 패닉 & 매수)** : 금융위기, 팬데믹급 패닉. 일생일대의 바닥 매수 찬스
+        * **극도의 탐욕 (105 이상)** : 20일 평균선 대비 지수가 5% 이상 급등. 단기 고점(조정) 확률이 매우 높으므로 추격 매수 자제 및 차익 실현 고려.
+        * **탐욕 & 안정 (102 ~ 105)** : 매수세가 튼튼하게 받쳐주는 전형적인 우상향 강세장 구간.
+        * **중립 & 관망 (98 ~ 102)** : 시장이 뚜렷한 방향성을 정하지 못하고 눈치를 보는 횡보 구간.
+        * **공포 & 줍줍 (95 ~ 98)** : 악재로 인해 시장 평균치 아래로 지수가 밀린 상태. 관심 종목 분할 매수 시작.
+        * **극도의 공포 (95 미만)** : 20일 평균선 대비 5% 이상 지수가 폭락한 투매장. 대중의 공포를 역이용하는 최고의 바닥 매수 찬스.
         """)
 
 st.divider()
