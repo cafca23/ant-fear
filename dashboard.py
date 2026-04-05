@@ -6,23 +6,24 @@ import warnings
 
 warnings.filterwarnings("ignore", category=UserWarning, module='bs4')
 
-headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
+# 💡 [보안 우회] 모바일 앱인 척 위장하는 강력한 헤더
+headers = {
+    'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15',
+    'Referer': 'https://m.stock.naver.com/'
+}
 
 st.set_page_config(page_title="앤트리치 시황판", page_icon="📊", layout="wide")
 
 # ==========================================
 # 🚨 [최종 진화] 암살자 모드 파쇄기 가동! (화면 깜빡임 없이 조용히 지우기)
 # ==========================================
-# 1. 앤트리치 방문증(세션) 발급 확인
 if "passed" not in st.session_state:
     st.session_state.passed = False
 
-# 2. 주소창에 암호가 있으면 방문증에 '합격' 도장을 찍고, 암호를 조용히 지웁니다.
 if st.query_params.get("from") == "blog":
     st.session_state.passed = True
     st.query_params.clear()  
 
-# 3. 방문증이 없는 불법 침입자 차단
 if not st.session_state.passed:
     st.error("🚨 비정상적인 접근입니다!")
     st.write("이 **[앤트리치 3대 공포/탐욕 지수 현황판]**은 블로그 방문자 전용 프리미엄 기능입니다.")
@@ -61,8 +62,9 @@ with col1:
         else:
             vix_state = "🔴 극도의 공포 & 매수"
             
+        sign = "+" if vix_diff > 0 else ""
         st.metric(label="🇺🇸 미국 VIX (공포 지수)", value=f"{vix_price:.2f}", 
-                  delta=f"{vix_diff:.2f} ({vix_pct:.2f}%)", delta_color="inverse")
+                  delta=f"{sign}{vix_diff:.2f} ({sign}{vix_pct:.2f}%)", delta_color="inverse")
         st.markdown(f"**현재 상태: {vix_state}**")
         
     except Exception as e:
@@ -99,7 +101,8 @@ with col2:
         else:
             cnn_state = "🟢 극도의 탐욕 & 매도"
             
-        st.metric(label="🦅 미국 CNN 지수", value=f"{score_cnn:.1f}", delta=f"{cnn_diff:.1f}")
+        sign = "+" if cnn_diff > 0 else ""
+        st.metric(label="🦅 미국 CNN 지수", value=f"{score_cnn:.1f}", delta=f"{sign}{cnn_diff:.1f}")
         st.markdown(f"**현재 상태: {cnn_state}**")
         
     except Exception as e:
@@ -117,22 +120,31 @@ with col2:
 # 3. 한국 KOSPI 공포 지수 (오른쪽 칸)
 with col3:
     try:
-        # 💡 [핵심 패치] 인베스팅닷컴 차단 우회 -> 네이버 금융 실시간 폴링 API 다이렉트 꽂기
-        url_vkospi = "https://polling.finance.naver.com/api/realtime/domestic/index/VKOSPI"
-        res_vkospi = requests.get(url_vkospi, headers=headers)
-        data_vkospi = res_vkospi.json()
-        
-        item = data_vkospi['result']['datas'][0]
-        vkospi_value = float(item['closePrice'].replace(',', ''))
-        vkospi_diff = float(item['compareToPreviousClosePrice'].replace(',', ''))
-        vkospi_pct = float(item['fluctuationsRatio'].replace(',', ''))
-        
-        # 하락일 경우 부호 음수 처리
-        if item.get('fluctuationsType', {}).get('text') == '하락':
-            vkospi_diff = -abs(vkospi_diff)
-            vkospi_pct = -abs(vkospi_pct)
+        # 💡 [이중 우회 1순위] 야후 파이낸스 공식 티커 (서버 차단 없음)
+        try:
+            vkospi = yf.Ticker("^VKOSPI")
+            vk_hist = vkospi.history(period="5d")['Close']
+            vkospi_value = float(vk_hist.iloc[-1])
+            vkospi_prev = float(vk_hist.iloc[-2])
+            vkospi_diff = vkospi_value - vkospi_prev
+            vkospi_pct = (vkospi_diff / vkospi_prev) * 100
+        except:
+            # 💡 [이중 우회 2순위] 네이버 모바일 API (PC버전보다 보안이 낮아 뚫림)
+            url_vkospi = "https://m.stock.naver.com/api/index/VKOSPI/basic"
+            res_vkospi = requests.get(url_vkospi, headers=headers)
+            data_vkospi = res_vkospi.json()
             
-        vkospi_delta_str = f"{vkospi_diff:.2f} ({vkospi_pct:.2f}%)"
+            vkospi_value = float(str(data_vkospi.get('closePrice', '0')).replace(',', ''))
+            diff_raw = data_vkospi.get('compareToPreviousPrice', data_vkospi.get('compareToPreviousClosePrice', '0'))
+            vkospi_diff = float(str(diff_raw).replace(',', ''))
+            vkospi_pct = float(str(data_vkospi.get('fluctuationsRatio', '0')).replace(',', ''))
+            
+            if data_vkospi.get('fluctuationsType', {}).get('text') == '하락' or str(data_vkospi.get('fluctuationsRatio', '')).startswith('-'):
+                vkospi_diff = -abs(vkospi_diff)
+                vkospi_pct = -abs(vkospi_pct)
+                
+        sign = "+" if vkospi_diff > 0 else ""
+        vkospi_delta_str = f"{sign}{vkospi_diff:.2f} ({sign}{vkospi_pct:.2f}%)"
         
         if vkospi_value < 15:
             vkospi_state = "🟢 극도의 탐욕 & 매도"
@@ -145,7 +157,7 @@ with col3:
         else:
             vkospi_state = "🔴 역사적 패닉 & 매수"
             
-        st.metric(label="🐯 한국 V-KOSPI (네이버 금융)", value=f"{vkospi_value:.2f}", 
+        st.metric(label="🐯 한국 V-KOSPI (공포 지수)", value=f"{vkospi_value:.2f}", 
                   delta=vkospi_delta_str, delta_color="inverse")
         st.markdown(f"**현재 상태: {vkospi_state}**")
         
@@ -164,7 +176,7 @@ with col3:
 st.divider()
 
 # ==========================================
-# [하단] 거시경제 (Macro) 핵심 지표 추가!
+# [하단] 거시경제 (Macro) 핵심 지표
 # ==========================================
 st.header("🌍 거시경제 (Macro) 핵심 지표")
 col4, col5 = st.columns(2)
@@ -179,7 +191,8 @@ with col4:
         ex_diff = ex_price - ex_prev
         ex_pct = (ex_diff / ex_prev) * 100
         
-        st.metric(label="💵 달러/원 환율 (USD/KRW)", value=f"{ex_price:,.2f} 원", delta=f"{ex_diff:,.2f} 원 ({ex_pct:.2f}%)")
+        sign = "+" if ex_diff > 0 else ""
+        st.metric(label="💵 달러/원 환율 (USD/KRW)", value=f"{ex_price:,.2f} 원", delta=f"{sign}{ex_diff:,.2f} 원 ({sign}{ex_pct:.2f}%)")
     except Exception as e:
         st.metric(label="💵 달러/원 환율", value="불러오기 실패")
         
@@ -199,7 +212,8 @@ with col5:
         tnx_diff = tnx_price - tnx_prev
         tnx_pct = (tnx_diff / tnx_prev) * 100
         
-        st.metric(label="🏛️ 미국 10년물 국채 금리", value=f"{tnx_price:.3f} %", delta=f"{tnx_diff:.3f} %p ({tnx_pct:.2f}%)")
+        sign = "+" if tnx_diff > 0 else ""
+        st.metric(label="🏛️ 미국 10년물 국채 금리", value=f"{tnx_price:.3f} %", delta=f"{sign}{tnx_diff:.3f} %p ({sign}{tnx_pct:.2f}%)")
     except Exception as e:
         st.metric(label="🏛️ 미국 10년물 국채 금리", value="불러오기 실패")
         
@@ -225,7 +239,8 @@ with col6:
         wti_diff = wti_price - wti_prev
         wti_pct = (wti_diff / wti_prev) * 100
         
-        st.metric(label="🛢️ WTI 국제 유가", value=f"$ {wti_price:.2f}", delta=f"{wti_diff:.2f} ({wti_pct:.2f}%)")
+        sign = "+" if wti_diff > 0 else ""
+        st.metric(label="🛢️ WTI 국제 유가", value=f"$ {wti_price:.2f}", delta=f"{sign}{wti_diff:.2f} ({sign}{wti_pct:.2f}%)")
     except Exception as e:
         st.metric(label="🛢️ WTI 국제 유가", value="불러오기 실패")
         
@@ -245,7 +260,8 @@ with col7:
         gold_diff = gold_price - gold_prev
         gold_pct = (gold_diff / gold_prev) * 100
         
-        st.metric(label="🥇 국제 금값 (Gold)", value=f"$ {gold_price:,.1f}", delta=f"{gold_diff:,.1f} ({gold_pct:.2f}%)")
+        sign = "+" if gold_diff > 0 else ""
+        st.metric(label="🥇 국제 금값 (Gold)", value=f"$ {gold_price:,.1f}", delta=f"{sign}{gold_diff:,.1f} ({sign}{gold_pct:.2f}%)")
     except Exception as e:
         st.metric(label="🥇 국제 금값", value="불러오기 실패")
         
@@ -266,7 +282,8 @@ with col8:
         btc_diff = btc_price - btc_prev
         btc_pct = (btc_diff / btc_prev) * 100
         
-        st.metric(label="🪙 비트코인 (BTC)", value=f"$ {btc_price:,.0f}", delta=f"{btc_diff:,.0f} ({btc_pct:.2f}%)")
+        sign = "+" if btc_diff > 0 else ""
+        st.metric(label="🪙 비트코인 (BTC)", value=f"$ {btc_price:,.0f}", delta=f"{sign}{btc_diff:,.0f} ({sign}{btc_pct:.2f}%)")
     except Exception as e:
         st.metric(label="🪙 비트코인", value="불러오기 실패")
         
